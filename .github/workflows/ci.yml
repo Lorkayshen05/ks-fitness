@@ -1,8 +1,10 @@
 name: CI
 
+# A PR branch would match both triggers, so `push` is scoped to main
+# (post-merge verification) and `pull_request` covers everything in review.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
     branches: [main]
 
