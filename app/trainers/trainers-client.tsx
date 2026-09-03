@@ -124,7 +124,10 @@ export function TrainersClient() {
                   <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4 text-xs text-slate-500">
                     <span className="flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5" aria-hidden />
-                      {classCounts.get(trainer.id) ?? 0} {dict.trainers.teaches}
+                      {dict.trainers.classCount.replace(
+                        "{n}",
+                        String(classCounts.get(trainer.id) ?? 0),
+                      )}
                     </span>
                     <span className="flex items-center gap-1 font-semibold text-purple-300 transition-transform group-hover:translate-x-0.5">
                       {dict.trainers.viewProfile}
