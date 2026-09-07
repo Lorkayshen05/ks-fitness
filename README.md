@@ -1,6 +1,6 @@
-# KS Fitness — Landing Page
+# KS Fitness
 
-Bilingual (EN / 简体中文) marketing site for the KS Fitness gym brand.
+Bilingual (EN / 简体中文) multi-page marketing site for the KS Fitness gym brand.
 Built with Next.js 14 (App Router), TypeScript, Tailwind CSS and Lucide icons.
 
 ## Getting started
@@ -12,14 +12,37 @@ npm run dev      # http://localhost:3000
 
 Other scripts: `npm run build`, `npm run start`, `npm run lint`, `npm run typecheck`.
 
+## Routes
+
+| Route               | Page                                                             |
+| ------------------- | ---------------------------------------------------------------- |
+| `/`                 | Landing page: hero, goal calculator, pricing, 7-day-pass form.    |
+| `/schedule`         | Weekly timetable, filters, and class booking.                     |
+| `/trainers`         | Coach directory, filterable by discipline.                        |
+| `/trainers/[slug]`  | Individual coach profile (one static page per coach).             |
+| `/gallery`          | Filterable gallery with a keyboard-navigable lightbox.            |
+
+Every route is prerendered at build time.
+
 ## Structure
 
-| Path                | Purpose                                                        |
-| ------------------- | -------------------------------------------------------------- |
-| `app/page.tsx`      | The whole landing page: navbar, hero, calculator, pricing, lead form, footer. |
-| `app/layout.tsx`    | Root layout, fonts, metadata.                                   |
-| `app/globals.css`   | Tailwind layers + base dark theme.                              |
-| `lib/dictionary.ts` | Every user-facing string, in both locales.                      |
+| Path                     | Purpose                                                       |
+| ------------------------ | ------------------------------------------------------------- |
+| `app/<route>/page.tsx`   | Server component: exports per-page `metadata`, renders the client component. |
+| `app/<route>/*-client.tsx` | The interactive UI for that route (`'use client'`).         |
+| `app/layout.tsx`         | Root layout: fonts, `LocaleProvider`, shared navbar + footer.  |
+| `components/`            | Chrome shared across routes (navbar, footer, headings, portrait). |
+| `lib/dictionary.ts`      | Every user-facing string, in both locales.                     |
+| `lib/data.ts`            | Structural data — timetable, coaches, gallery items.           |
+| `lib/locale-context.tsx` | Locale state, shared across routes.                            |
+
+### Copy vs. data
+
+`lib/data.ts` holds everything that is *not* prose — times, capacities, ids,
+slugs — and `lib/dictionary.ts` holds the localized names, bios and captions
+that pair with it, keyed by the same id. Adding a language never means touching
+`data.ts`. Gallery ids are a closed union, so a caption missing from the
+dictionary fails typecheck rather than rendering `undefined`.
 
 ## Editing copy
 
@@ -29,17 +52,41 @@ Nothing else needs to change; the page reads exclusively from the dictionary.
 
 ## How the language switcher avoids hydration mismatches
 
-The server and the first client paint both render `defaultLocale` (`en`).
-A stored preference is read from `localStorage` in an effect *after* mount, so
-the initial client tree always matches the server HTML. The same rule applies
-to the calculator's projected arrival date, which depends on "today": it stays
-blank (`—`) until mounted, then fills in.
+Locale lives in `LocaleProvider` (`lib/locale-context.tsx`), above the routes,
+so it survives client-side navigation. The server and the first client paint
+both render `defaultLocale` (`en`); a stored preference is read from
+`localStorage` in an effect *after* mount, so the initial client tree always
+matches the server HTML.
 
-## Wiring up the lead form
+The provider exposes a `mounted` flag for anything else that differs between
+server and client. Three things depend on it:
 
-`LeadMagnet` in `app/page.tsx` validates on submit and currently fakes the
-network call with a `setTimeout`. Replace that line with a `fetch` to a route
-handler or your CRM/ESP endpoint:
+- the calculator's projected arrival date (depends on "today"),
+- the schedule's "today" column highlight,
+- stored class bookings.
+
+Each renders its neutral state until mounted, then fills in.
+
+## Page metadata and language
+
+Per-route `metadata` is exported from each server `page.tsx` and emitted at
+build time, so it is always in the default locale (English) — crawlers get
+English, while the visible page switches on the client. Making metadata truly
+bilingual would need locale-prefixed routes (`/en/...`, `/zh/...`), which is a
+larger change than this site currently needs.
+
+## Wiring up the forms
+
+Two forms are stubbed and need a backend before launch:
+
+- **`LeadMagnet`** (`app/home-client.tsx`) — the 7-day-pass form.
+- **`BookingDialog`** (`app/schedule/schedule-client.tsx`) — class booking.
+  Bookings are also only stored in the visitor's own browser
+  (`localStorage`), so nothing reaches the gym and seat counts are
+  per-visitor. Point the confirm handler at your booking system to go live.
+
+Both validate on submit and fake the network call with a `setTimeout`.
+Replace that line with a `fetch` to a route handler or your CRM/ESP endpoint:
 
 ```ts
 setStatus("submitting");
@@ -54,6 +101,18 @@ Burn is estimated from metabolic equivalents:
 multiplied by session length and weekly frequency. Time to target divides the
 remaining kilograms by the weekly deficit at 7,700 kcal per kilogram. These are
 marketing estimates, not medical advice — the disclaimer under the results says so.
+
+## Adding real photography
+
+Coach portraits and gallery tiles render branded placeholders (initials or a
+gradient panel) until real images exist, so the layout is final before shoot
+day. To swap in photographs, drop files in `public/` and set the optional
+`photo` (trainers) or `src` (gallery) field on the record in `lib/data.ts` —
+no component changes needed.
+
+Both render through a plain `<img>` rather than `next/image`, so remote URLs
+work without per-host `remotePatterns` config. If you move to local files only,
+switching to `next/image` would buy you automatic resizing.
 
 ## Deploying to Vercel
 
