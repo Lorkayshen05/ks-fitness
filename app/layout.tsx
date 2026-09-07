@@ -1,68 +1,48 @@
 import type { Metadata, Viewport } from "next";
-import { Anton, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 
-import { business, fullAddress } from "@/lib/gepuklah";
+import { dictionary, defaultLocale } from "@/lib/dictionary";
 
 import "./globals.css";
 
-/** Poster-weight display face for headlines. */
-const anton = Anton({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-  variable: "--font-display",
-});
-
-const jakarta = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-sans",
+  variable: "--font-inter",
 });
 
-const title = `${business.name} ${business.byline} — Ayam Gepuk in Damansara Jaya`;
-const description =
-  "Boneless chicken chop smashed to order under house cashew (gajus) sambal. Open daily until 8:30 PM on Jalan SS 22/11, Damansara Jaya.";
-
+/**
+ * The root layout is deliberately thin: it owns <html>, <body> and the shared
+ * stylesheet, and nothing else. Each site in this app brings its own chrome —
+ * `(site)` renders the KS Fitness navbar and footer, `gepuklah` renders the
+ * restaurant page standalone — so neither leaks into the other.
+ *
+ * Metadata is emitted at build time, so it uses the default locale. The visible
+ * page swaps language on the client; crawlers get the English copy.
+ */
 export const metadata: Metadata = {
-  title,
-  description,
-  keywords: [
-    "ayam gepuk",
-    "sambal gajus",
-    "Damansara Jaya",
-    "Petaling Jaya",
-    "nasi lemak",
-    "halal street food",
-  ],
-  openGraph: {
-    title,
-    description,
-    type: "website",
-    locale: "en_MY",
-    siteName: `${business.name} ${business.byline}`,
+  title: {
+    default: dictionary[defaultLocale].meta.title,
+    template: "%s",
   },
-  other: {
-    "geo.placename": fullAddress,
+  description: dictionary[defaultLocale].meta.description,
+  openGraph: {
+    title: dictionary[defaultLocale].meta.title,
+    description: dictionary[defaultLocale].meta.description,
+    type: "website",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0F0B09",
+  themeColor: "#020617",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-MY" className={`${anton.variable} ${jakarta.variable}`}>
-      <body className="bg-charcoal-950 font-sans text-cream-100">
-        {/* Scroll reveals start hidden and are un-hidden by an IntersectionObserver.
-            Without JS that observer never runs, so show everything up front. */}
-        <noscript>
-          <style>{".reveal{opacity:1!important;animation:none!important}"}</style>
-        </noscript>
-        {children}
-      </body>
+    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
+      <body className="bg-slate-950 font-sans text-slate-100">{children}</body>
     </html>
   );
 }

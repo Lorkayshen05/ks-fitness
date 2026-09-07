@@ -10,6 +10,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
@@ -17,198 +18,24 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
-  Clock,
   Crown,
   Dumbbell,
   Flame,
-  Languages,
   Loader2,
   Mail,
-  MapPin,
-  Menu,
   Sparkles,
   Target,
   TrendingDown,
   User,
-  X,
   Zap,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-import {
-  defaultLocale,
-  getDictionary,
-  isLocale,
-  localeLabels,
-  type Dictionary,
-  type Locale,
-} from "@/lib/dictionary";
+import { SubSectionHeading } from "@/components/section-heading";
+import type { Dictionary, Locale } from "@/lib/dictionary";
+import { useLocale } from "@/lib/locale-context";
+import { cn, clamp } from "@/lib/utils";
 
-/* -------------------------------------------------------------------------- */
-/*  Shared helpers                                                            */
-/* -------------------------------------------------------------------------- */
-
-const LOCALE_STORAGE_KEY = "ks-fitness:locale";
-
-function cn(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-/** Section heading used by every block below the hero. */
-function SectionHeading({
-  eyebrow,
-  title,
-  subtitle,
-  icon: Icon,
-}: {
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  icon: typeof Flame;
-}) {
-  return (
-    <div className="mx-auto max-w-2xl text-center">
-      <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-purple-300">
-        <Icon className="h-3.5 w-3.5" aria-hidden />
-        {eyebrow}
-      </span>
-      <h2 className="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
-        {title}
-      </h2>
-      <p className="mt-4 text-base leading-relaxed text-slate-400 sm:text-lg">{subtitle}</p>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Navbar                                                                    */
-/* -------------------------------------------------------------------------- */
-
-function Navbar({
-  dict,
-  locale,
-  onToggleLocale,
-}: {
-  dict: Dictionary;
-  locale: Locale;
-  onToggleLocale: () => void;
-}) {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const links = [
-    { href: "#calculator", label: dict.nav.links.calculator },
-    { href: "#pricing", label: dict.nav.links.pricing },
-    { href: "#free-pass", label: dict.nav.links.pass },
-  ];
-
-  return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        scrolled
-          ? "border-b border-white/10 bg-slate-950/80 backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent",
-      )}
-    >
-      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="#top" className="group flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/25">
-            <Dumbbell className="h-5 w-5 text-white" aria-hidden />
-          </span>
-          <span className="text-lg font-extrabold tracking-tight text-white">
-            {dict.nav.brand}
-          </span>
-        </a>
-
-        <div className="hidden items-center gap-8 md:flex">
-          {links.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-slate-300 transition-colors hover:text-white"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggleLocale}
-            aria-label={dict.nav.toggleAria}
-            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-purple-400/40 hover:bg-purple-500/10 hover:text-white"
-          >
-            <Languages className="h-4 w-4" aria-hidden />
-            <span>{localeLabels[locale]}</span>
-          </button>
-
-          <a
-            href="#free-pass"
-            className="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-600/25 transition-transform hover:scale-[1.03] sm:inline-flex"
-          >
-            {dict.nav.cta}
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </a>
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-label={dict.nav.menuAria}
-            aria-expanded={menuOpen}
-            className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-200 md:hidden"
-          >
-            {menuOpen ? (
-              <X className="h-5 w-5" aria-hidden />
-            ) : (
-              <Menu className="h-5 w-5" aria-hidden />
-            )}
-          </button>
-        </div>
-      </nav>
-
-      {menuOpen ? (
-        <div className="border-t border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl md:hidden">
-          <div className="flex flex-col gap-1">
-            {links.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
-              >
-                {link.label}
-              </a>
-            ))}
-            <a
-              href="#free-pass"
-              onClick={() => setMenuOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              {dict.nav.cta}
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </a>
-          </div>
-        </div>
-      ) : null}
-    </header>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Hero                                                                      */
-/* -------------------------------------------------------------------------- */
 
 function Hero({ dict }: { dict: Dictionary }) {
   return (
@@ -280,9 +107,6 @@ function Hero({ dict }: { dict: Dictionary }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Goal calculator                                                           */
-/* -------------------------------------------------------------------------- */
 
 type Intensity = "light" | "moderate" | "intense";
 
@@ -389,7 +213,7 @@ function ResultCard({
   unit,
   accent,
 }: {
-  icon: typeof Flame;
+  icon: LucideIcon;
   label: string;
   value: string;
   unit: string;
@@ -480,7 +304,7 @@ function GoalCalculator({ dict, locale }: { dict: Dictionary; locale: Locale }) 
   return (
     <section id="calculator" className="relative px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <SectionHeading
+        <SubSectionHeading
           eyebrow={dict.calculator.eyebrow}
           title={dict.calculator.title}
           subtitle={dict.calculator.subtitle}
@@ -631,16 +455,13 @@ function GoalCalculator({ dict, locale }: { dict: Dictionary; locale: Locale }) 
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Pricing                                                                   */
-/* -------------------------------------------------------------------------- */
 
 type BillingCycle = "monthly" | "annual";
 
 type PlanKey = "trial" | "allAccess" | "vip";
 
 /** Prices in USD. Annual plans bill 12 months up front at a 20% discount. */
-const PLAN_PRICING: Record<PlanKey, { monthly: number; icon: typeof Dumbbell; featured: boolean }> =
+const PLAN_PRICING: Record<PlanKey, { monthly: number; icon: LucideIcon; featured: boolean }> =
   {
     trial: { monthly: 0, icon: Sparkles, featured: false },
     allAccess: { monthly: 69, icon: Dumbbell, featured: true },
@@ -660,7 +481,7 @@ function Pricing({ dict }: { dict: Dictionary }) {
       </div>
 
       <div className="mx-auto max-w-7xl">
-        <SectionHeading
+        <SubSectionHeading
           eyebrow={dict.pricing.eyebrow}
           title={dict.pricing.title}
           subtitle={dict.pricing.subtitle}
@@ -811,9 +632,6 @@ function Pricing({ dict }: { dict: Dictionary }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Lead magnet form                                                          */
-/* -------------------------------------------------------------------------- */
 
 type ClassKey = "strength" | "hiit" | "yoga" | "spin" | "boxing";
 
@@ -886,7 +704,7 @@ function LeadMagnet({ dict }: { dict: Dictionary }) {
     <section id="free-pass" className="relative px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <div className="overflow-hidden rounded-3xl border border-purple-500/25 bg-gradient-to-br from-purple-600/15 via-slate-900/60 to-pink-600/15 p-7 backdrop-blur sm:p-12">
-          <SectionHeading
+          <SubSectionHeading
             eyebrow={dict.lead.eyebrow}
             title={dict.lead.title}
             subtitle={dict.lead.subtitle}
@@ -990,7 +808,7 @@ function LeadMagnet({ dict }: { dict: Dictionary }) {
                     </option>
                     {CLASS_KEYS.map((key) => (
                       <option key={key} value={key} className="bg-slate-900">
-                        {dict.lead.classes[key]}
+                        {dict.classTypes[key]}
                       </option>
                     ))}
                   </select>
@@ -1033,90 +851,15 @@ function LeadMagnet({ dict }: { dict: Dictionary }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Footer                                                                    */
-/* -------------------------------------------------------------------------- */
-
-function Footer({ dict }: { dict: Dictionary }) {
-  return (
-    <footer className="border-t border-white/10 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
-        <div className="max-w-sm">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
-              <Dumbbell className="h-5 w-5 text-white" aria-hidden />
-            </span>
-            <span className="text-lg font-extrabold tracking-tight text-white">
-              {dict.nav.brand}
-            </span>
-          </div>
-          <p className="mt-4 text-sm leading-relaxed text-slate-400">{dict.footer.tagline}</p>
-        </div>
-
-        <div className="space-y-3 text-sm text-slate-400">
-          <p className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-purple-400" aria-hidden />
-            {dict.footer.address}
-          </p>
-          <p className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-pink-400" aria-hidden />
-            {dict.footer.hours}
-          </p>
-        </div>
-      </div>
-
-      <p className="mx-auto mt-10 max-w-7xl text-xs text-slate-600">
-        © 2024 {dict.nav.brand}. {dict.footer.rights}
-      </p>
-    </footer>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Page                                                                      */
-/* -------------------------------------------------------------------------- */
-
-export default function Page() {
-  // Always render `defaultLocale` on the server AND on the first client paint,
-  // then adopt any stored preference in an effect — this is what keeps the
-  // language switcher free of hydration mismatches.
-  const [locale, setLocale] = useState<Locale>(defaultLocale);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-      if (isLocale(stored)) setLocale(stored);
-    } catch {
-      // Storage can be unavailable (private mode, blocked cookies) — ignore.
-    }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-  }, [locale]);
-
-  const toggleLocale = useCallback(() => {
-    setLocale((current) => {
-      const next: Locale = current === "en" ? "zh" : "en";
-      try {
-        window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
-      } catch {
-        // Ignore storage failures; the in-memory switch still works.
-      }
-      return next;
-    });
-  }, []);
-
-  const dict = useMemo(() => getDictionary(locale), [locale]);
+export function HomeClient() {
+  const { dict, locale } = useLocale();
 
   return (
-    <main className="min-h-screen bg-slate-950">
-      <Navbar dict={dict} locale={locale} onToggleLocale={toggleLocale} />
+    <>
       <Hero dict={dict} />
       <GoalCalculator dict={dict} locale={locale} />
       <Pricing dict={dict} />
       <LeadMagnet dict={dict} />
-      <Footer dict={dict} />
-    </main>
+    </>
   );
 }

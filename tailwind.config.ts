@@ -1,6 +1,13 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Two brands share this config. Keep the `brand`/`slate`-facing tokens for the
+ * KS Fitness site under `app/(site)`, and the warm `charcoal`/`chilli`/
+ * `turmeric` set for the Gepuklah page under `app/gepuklah`. `fade-up` is used
+ * by both, so change it with both in mind.
+ */
 const config: Config = {
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,11 +16,20 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        /* KS Fitness (also the app-wide default). */
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        /* Gepuklah: poster display face and body face, scoped to that subtree. */
         display: ["var(--font-display)", "Impact", "system-ui", "sans-serif"],
+        jakarta: ["var(--font-jakarta)", "system-ui", "sans-serif"],
       },
       colors: {
-        /* Warm charcoal — the base the whole page sits on. */
+        /* --- KS Fitness --- */
+        brand: {
+          purple: "#a855f7",
+          pink: "#ec4899",
+        },
+        /* --- Gepuklah --- */
+        /* Warm charcoal — the base the restaurant page sits on. */
         charcoal: {
           950: "#0F0B09",
           900: "#171110",
@@ -57,8 +73,12 @@ const config: Config = {
       },
       keyframes: {
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "0%": { opacity: "0", transform: "translateY(16px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { opacity: "0.35" },
+          "50%": { opacity: "0.7" },
         },
         marquee: {
           "0%": { transform: "translateX(0)" },
@@ -78,7 +98,8 @@ const config: Config = {
         },
       },
       animation: {
-        "fade-up": "fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both",
+        "fade-up": "fade-up 0.6s ease-out both",
+        "pulse-glow": "pulse-glow 6s ease-in-out infinite",
         marquee: "marquee 30s linear infinite",
         "marquee-slow": "marquee 48s linear infinite",
         "flame-pulse": "flame-pulse 5s ease-in-out infinite",
