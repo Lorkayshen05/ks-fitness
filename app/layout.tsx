@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
-import { Footer } from "@/components/footer";
-import { Navbar } from "@/components/navbar";
 import { dictionary, defaultLocale } from "@/lib/dictionary";
-import { LocaleProvider } from "@/lib/locale-context";
 
 import "./globals.css";
 
@@ -14,8 +11,15 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-// Metadata is emitted at build time, so it uses the default locale. The visible
-// page swaps language on the client; crawlers get the English copy.
+/**
+ * The root layout is deliberately thin: it owns <html>, <body> and the shared
+ * stylesheet, and nothing else. Each site in this app brings its own chrome —
+ * `(site)` renders the KS Fitness navbar and footer, `gepuklah` renders the
+ * restaurant page standalone — so neither leaks into the other.
+ *
+ * Metadata is emitted at build time, so it uses the default locale. The visible
+ * page swaps language on the client; crawlers get the English copy.
+ */
 export const metadata: Metadata = {
   title: {
     default: dictionary[defaultLocale].meta.title,
@@ -38,13 +42,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
-      <body className="bg-slate-950 font-sans text-slate-100">
-        <LocaleProvider>
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-        </LocaleProvider>
-      </body>
+      <body className="bg-slate-950 font-sans text-slate-100">{children}</body>
     </html>
   );
 }

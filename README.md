@@ -21,6 +21,7 @@ Other scripts: `npm run build`, `npm run start`, `npm run lint`, `npm run typech
 | `/trainers`         | Coach directory, filterable by discipline.                        |
 | `/trainers/[slug]`  | Individual coach profile (one static page per coach).             |
 | `/gallery`          | Filterable gallery with a keyboard-navigable lightbox.            |
+| `/gepuklah`         | Gepuklah by Mingchuun — a separate restaurant brand (see below).  |
 
 Every route is prerendered at build time.
 
@@ -30,7 +31,10 @@ Every route is prerendered at build time.
 | ------------------------ | ------------------------------------------------------------- |
 | `app/<route>/page.tsx`   | Server component: exports per-page `metadata`, renders the client component. |
 | `app/<route>/*-client.tsx` | The interactive UI for that route (`'use client'`).         |
-| `app/layout.tsx`         | Root layout: fonts, `LocaleProvider`, shared navbar + footer.  |
+| `app/layout.tsx`         | Thin root layout: `<html>`, `<body>`, Inter, `globals.css`. No chrome. |
+| `app/(site)/layout.tsx`  | KS Fitness chrome: `LocaleProvider`, navbar + footer. Wraps every fitness route. |
+| `app/(site)/`            | The KS Fitness routes. The `(site)` group does not appear in URLs. |
+| `app/gepuklah/`          | The Gepuklah page and its own layout, fonts and favicon.       |
 | `components/`            | Chrome shared across routes (navbar, footer, headings, portrait). |
 | `lib/dictionary.ts`      | Every user-facing string, in both locales.                     |
 | `lib/data.ts`            | Structural data — timetable, coaches, gallery items.           |
@@ -113,6 +117,56 @@ no component changes needed.
 Both render through a plain `<img>` rather than `next/image`, so remote URLs
 work without per-host `remotePatterns` config. If you move to local files only,
 switching to `next/image` would buy you automatic resizing.
+
+## The Gepuklah page (`/gepuklah`)
+
+A second, unrelated brand lives in this app: a landing page for Gepuklah by
+Mingchuun, an Ayam Gepuk shop on Jalan SS 22/11, Damansara Jaya.
+
+It is deliberately isolated from KS Fitness. The root layout carries no chrome,
+so `app/(site)/layout.tsx` owns the fitness navbar and footer while
+`app/gepuklah/layout.tsx` owns the restaurant's fonts (Anton + Plus Jakarta
+Sans), its warm charcoal palette and its favicon. Neither site can restyle the
+other. In `tailwind.config.ts` the `brand` tokens belong to KS Fitness and the
+`charcoal` / `chilli` / `turmeric` / `cream` / `pandan` tokens to Gepuklah;
+`fade-up` is the one animation both use.
+
+All Gepuklah copy and data lives in `lib/gepuklah.ts` — menu, reviews, opening
+hours, queue windows, address and Maps links.
+
+### Placeholders to replace before launch
+
+Flagged in comments in `lib/gepuklah.ts`. These are realistic stand-ins written
+for the mockup, **not** verified business data:
+
+- `menu[].price` — indicative prices. The page carries a matching disclaimer.
+- `reviews` — sample testimonials. Swap in real, permissioned Google reviews.
+- `queue.windows` / `queue.tips` — typical rush windows, not measured waits.
+- `google.reviewCount` — left `null`, which renders "Rated by diners on Google
+  Maps". Set a number and the copy switches to "From N Google reviews".
+- `business.social` — placeholder profile URLs.
+
+The 3.7/5 Google rating, the address and the 8:30 PM closing time are the
+values the business supplied.
+
+### The live status badge
+
+`StatusBadge` reads the shop's clock, not the visitor's: `getKualaLumpurNow`
+formats `new Date()` through `Intl.DateTimeFormat` with
+`timeZone: "Asia/Kuala_Lumpur"`, so someone checking from London still sees
+whether the Damansara Jaya counter is open. Three states — open, last orders
+(inside the final hour), and closed with the next opening time — re-derived
+every 60 seconds.
+
+Hours live in `openingHours` as minutes from midnight. To add a closed day, set
+that entry's `open` and `close` to `null`; the badge walks forward to the next
+day that opens and the hours table prints "Closed".
+
+Time-dependent copy renders a neutral placeholder on the server and on the
+first client paint, then fills in after mount — the same rule the language
+switcher follows below. Scroll reveals start at `opacity-0` and un-hide on an
+IntersectionObserver, so `app/gepuklah/layout.tsx` ships a `<noscript>` style
+that forces `.reveal` visible.
 
 ## Deploying to Vercel
 
