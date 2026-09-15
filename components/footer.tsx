@@ -1,62 +1,83 @@
-"use client";
-
+import { HeartHandshake, Info } from "lucide-react";
 import Link from "next/link";
-import { Clock, Dumbbell, MapPin } from "lucide-react";
 
-import { useLocale } from "@/lib/locale-context";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { Container } from "@/components/container";
+import { legalIds, navHref, navIds } from "@/data/content";
+import { getTranslation } from "@/lib/i18n";
+
+const legalHref: Record<(typeof legalIds)[number], string> = {
+  privacy: "/privacy",
+  terms: "/terms",
+};
 
 export function Footer() {
-  const { dict } = useLocale();
-
-  const links = [
-    { href: "/schedule", label: dict.nav.links.schedule },
-    { href: "/trainers", label: dict.nav.links.trainers },
-    { href: "/gallery", label: dict.nav.links.gallery },
-    { href: "/#pricing", label: dict.nav.links.pricing },
-  ];
+  const { locale, dict } = getTranslation();
 
   return (
-    <footer className="border-t border-white/10 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-10 sm:flex-row sm:justify-between">
-        <div className="max-w-sm">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
-              <Dumbbell className="h-5 w-5 text-white" aria-hidden />
-            </span>
-            <span className="text-lg font-extrabold tracking-tight text-white">
-              {dict.nav.brand}
-            </span>
-          </Link>
-          <p className="mt-4 text-sm leading-relaxed text-slate-400">{dict.footer.tagline}</p>
+    <footer className="border-t border-ink-200 bg-ink-900 text-ink-300">
+      <Container className="py-14">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="lg:col-span-2">
+            <p className="flex items-center gap-2 text-base font-semibold text-white">
+              <HeartHandshake aria-hidden className="h-5 w-5 text-brand-300" />
+              {dict.meta.siteName}
+            </p>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed">{dict.footer.blurb}</p>
+            <div className="mt-6">
+              <LanguageSwitcher locale={locale} dict={dict} tone="dark" />
+            </div>
+          </div>
+
+          <nav aria-label={dict.footer.exploreHeading}>
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
+              {dict.footer.exploreHeading}
+            </h2>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {navIds.map((id) => (
+                <li key={id}>
+                  <Link
+                    href={navHref[id]}
+                    className="rounded transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                  >
+                    {dict.nav.links[id]}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label={dict.footer.legalHeading}>
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-white">
+              {dict.footer.legalHeading}
+            </h2>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {legalIds.map((id) => (
+                <li key={id}>
+                  <Link
+                    href={legalHref[id]}
+                    className="rounded transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                  >
+                    {dict.nav.legal[id]}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
 
-        <nav className="flex flex-col gap-2.5 text-sm">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-slate-400 transition-colors hover:text-white"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="space-y-3 text-sm text-slate-400">
-          <p className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-purple-400" aria-hidden />
-            {dict.footer.address}
-          </p>
-          <p className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-pink-400" aria-hidden />
-            {dict.footer.hours}
-          </p>
+        <div className="mt-12 flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <Info aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-300" />
+          <div>
+            <h2 className="text-sm font-semibold text-white">
+              {dict.footer.disclaimerHeading}
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed">{dict.footer.disclaimer}</p>
+          </div>
         </div>
-      </div>
 
-      <p className="mx-auto mt-10 max-w-7xl text-xs text-slate-600">
-        © 2024 {dict.nav.brand}. {dict.footer.rights}
-      </p>
+        <p className="mt-8 text-xs text-ink-400">{dict.footer.rights}</p>
+      </Container>
     </footer>
   );
 }

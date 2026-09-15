@@ -1,129 +1,153 @@
-# KS Fitness
+# Sokongan Rohingya
 
-Bilingual (EN / 简体中文) multi-page marketing site for the KS Fitness gym brand.
-Built with Next.js 14 (App Router), TypeScript, Tailwind CSS and Lucide icons.
+An independent, **non-transactional** information platform about supporting
+Rohingya refugees in Malaysia. It explains the situation from cited sources,
+lists organisations whose registration and official donation channels have been
+checked, and passes contact and volunteer enquiries to the people who run it.
+
+It deliberately does **not** process payments. Every donation link opens the
+listed organisation's own official donation page, where that organisation is
+solely responsible for processing, receipting and allocating the gift.
+
+Built with Next.js 14 (App Router), TypeScript, Tailwind CSS, Prisma and SQLite.
 
 ## Getting started
 
 ```bash
-npm install
-npm run dev      # http://localhost:3000
+npm install                # postinstall runs `prisma generate`
+cp .env.example .env       # then edit if you need different values
+npm run db:migrate         # creates prisma/dev.db and applies the migration
+npm run db:seed            # loads the verified organisations, figures, articles
+npm run dev                # http://localhost:3000
 ```
 
-Other scripts: `npm run build`, `npm run start`, `npm run lint`, `npm run typecheck`.
+Other scripts: `npm run build`, `npm run start`, `npm run lint`,
+`npm run typecheck`, `npm test`, `npm run db:reset`.
+
+## Environment variables
+
+| Variable               | Required | Purpose                                                          |
+| ---------------------- | -------- | ---------------------------------------------------------------- |
+| `DATABASE_URL`         | yes      | SQLite connection string. Relative paths resolve against `prisma/`. |
+| `NEXT_PUBLIC_SITE_URL` | yes in production | Absolute origin, no trailing slash. Used for canonical URLs, `sitemap.xml`, `robots.txt` and Open Graph tags. Defaults to `http://localhost:3000`. |
 
 ## Routes
 
-| Route               | Page                                                             |
-| ------------------- | ---------------------------------------------------------------- |
-| `/`                 | Landing page: hero, goal calculator, pricing, 7-day-pass form.    |
-| `/schedule`         | Weekly timetable, filters, and class booking.                     |
-| `/trainers`         | Coach directory, filterable by discipline.                        |
-| `/trainers/[slug]`  | Individual coach profile (one static page per coach).             |
-| `/gallery`          | Filterable gallery with a keyboard-navigable lightbox.            |
+| Route                    | Page                                                                |
+| ------------------------ | ------------------------------------------------------------------- |
+| `/`                      | Hero → mission → ways to help → organisations → figures → context → FAQ → CTA. |
+| `/about`                 | Why the platform exists, the situation, and what it is not.          |
+| `/help`                  | Six routes to helping, financial and otherwise.                      |
+| `/organizations`         | Directory with server-side search and a verified-only filter.        |
+| `/organizations/[slug]`  | One organisation: description, official links, donation interstitial. |
+| `/impact`                | Published figures, each with its source and check date.              |
+| `/stories`               | Sourced explainers, plus the editorial note on personal accounts.    |
+| `/stories/[slug]`        | One article.                                                         |
+| `/faq`                   | Full FAQ, with `FAQPage` structured data.                            |
+| `/contact`               | Contact and volunteer form (`?type=volunteer` preselects).           |
+| `/privacy`, `/terms`     | Legal pages.                                                         |
+| `/sitemap.xml`, `/robots.txt` | Generated from the route config and the database.               |
 
-Every route is prerendered at build time.
+Unknown paths and unknown slugs both return a real **404** status, not a soft one.
 
 ## Structure
 
-| Path                     | Purpose                                                       |
-| ------------------------ | ------------------------------------------------------------- |
-| `app/<route>/page.tsx`   | Server component: exports per-page `metadata`, renders the client component. |
-| `app/<route>/*-client.tsx` | The interactive UI for that route (`'use client'`).         |
-| `app/layout.tsx`         | Root layout: fonts, `LocaleProvider`, shared navbar + footer.  |
-| `components/`            | Chrome shared across routes (navbar, footer, headings, portrait). |
-| `lib/dictionary.ts`      | Every user-facing string, in both locales.                     |
-| `lib/data.ts`            | Structural data — timetable, coaches, gallery items.           |
-| `lib/locale-context.tsx` | Locale state, shared across routes.                            |
+| Path                    | Purpose                                                              |
+| ----------------------- | --------------------------------------------------------------------- |
+| `app/`                  | Routes. Server components throughout; `page.tsx` reads, renders, done. |
+| `components/`           | The shared UI kit. Four of them are client components (see below).    |
+| `actions/`              | Server actions: `submissions.ts` (one action, both enquiry types) and `locale.ts`. |
+| `lib/`                  | `db`, `queries`, `i18n`, `validation`, `sanitize`, `rate-limit`, `seo`, `utils`. |
+| `data/content.ts`       | Structural config: section ids and their order.                       |
+| `data/dictionaries/`    | Every user-facing string, in `en`, `zh` and `ms`.                     |
+| `types/`                | Shared types, locales and the form-state contract.                    |
+| `prisma/`               | Schema, migration and seed.                                           |
 
-### Copy vs. data
+## How language works
 
-`lib/data.ts` holds everything that is *not* prose — times, capacities, ids,
-slugs — and `lib/dictionary.ts` holds the localized names, bios and captions
-that pair with it, keyed by the same id. Adding a language never means touching
-`data.ts`. Gallery ids are a closed union, so a caption missing from the
-dictionary fails typecheck rather than rendering `undefined`.
+Locale lives in a first-party cookie and is resolved **on the server**, so every
+page renders its final text in one pass. There is no locale provider, no
+dictionary in the client bundle and no hydration mismatch to guard against.
 
-## Editing copy
+The switcher is a plain `<form>` posting to the `setLocale` server action, so it
+works with JavaScript disabled.
 
-All text lives in `lib/dictionary.ts`. The `en` tree defines the shape
-(`Dictionary`), and `zh` mirrors it — add a key to `en` first, then to `zh`.
-Nothing else needs to change; the page reads exclusively from the dictionary.
+`data/dictionaries/en.ts` defines the shape (`Dictionary`); `zh` and `ms` are
+typed as `Dictionary`, so adding an English key without translating it fails
+`npm run typecheck`. Collections that must be complete — FAQ entries, ways to
+help, mission points — are keyed `Record`s over ids declared in
+`data/content.ts`, so a missing item is a type error rather than a gap on the page.
 
-## How the language switcher avoids hydration mismatches
+Because language is a cookie rather than a URL segment, every language shares one
+canonical URL and crawlers receive the English copy.
 
-Locale lives in `LocaleProvider` (`lib/locale-context.tsx`), above the routes,
-so it survives client-side navigation. The server and the first client paint
-both render `defaultLocale` (`en`); a stored preference is read from
-`localStorage` in an effect *after* mount, so the initial client tree always
-matches the server HTML.
+## Client components, and why
 
-The provider exposes a `mounted` flag for anything else that differs between
-server and client. Three things depend on it:
+Everything is a server component except four, each of which exists because the
+browser genuinely needs to do something:
 
-- the calculator's projected arrival date (depends on "today"),
-- the schedule's "today" column highlight,
-- stored class bookings.
+| Component            | Why it is a client component                                    |
+| -------------------- | ---------------------------------------------------------------- |
+| `form.tsx`           | `useFormState` / `useFormStatus` for pending, success and per-field error states. |
+| `modal.tsx`          | Opening and closing a native `<dialog>`.                         |
+| `donate-button.tsx`  | Owns the modal's open state.                                     |
+| `mobile-nav.tsx`     | Must close the panel when a link changes the route; the header lives in the layout and is never remounted. |
 
-Each renders its neutral state until mounted, then fills in.
+Everything else — the language switcher, the FAQ accordion (`<details>`), the
+organisation search (a GET form) — is server-rendered with no JavaScript at all.
+Copy is passed into client components as plain props, so no dictionary is ever
+shipped to the browser.
 
-## Page metadata and language
+## Content rules
 
-Per-route `metadata` is exported from each server `page.tsx` and emitted at
-build time, so it is always in the default locale (English) — crawlers get
-English, while the visible page switches on the client. Making metadata truly
-bilingual would need locale-prefixed routes (`/en/...`, `/zh/...`), which is a
-larger change than this site currently needs.
+These are enforced by the code and the seed data, not just by intention:
 
-## Wiring up the forms
+- **Every figure carries its source.** `ImpactMetric.source` is required, and
+  `MetricCard` renders it. A figure that cannot be attributed is not published.
+- **Verified means one specific thing.** On the date shown, the organisation's
+  registration details and the donation URL listed here were checked against a
+  primary source. It is not an audit, an endorsement or a continuing guarantee —
+  `/stories/how-organisations-are-verified` says exactly that, and the date is
+  rendered next to every badge.
+- **No invented people.** The platform publishes contextual explainers, not
+  personal testimony, and publishes no individual's account without documented
+  informed consent. The `/stories` page states this in place of the testimonials
+  a site like this would normally carry.
+- **No per-person donation claims.** Organisations pool and allocate funds; the
+  platform never claims a sum reaches a named individual.
 
-Two forms are stubbed and need a backend before launch:
+## Safety and correctness notes
 
-- **`LeadMagnet`** (`app/home-client.tsx`) — the 7-day-pass form.
-- **`BookingDialog`** (`app/schedule/schedule-client.tsx`) — class booking.
-  Bookings are also only stored in the visitor's own browser
-  (`localStorage`), so nothing reaches the gym and seat counts are
-  per-visitor. Point the confirm handler at your booking system to go live.
+- **Validation and sanitisation** live in `lib/validation.ts` and
+  `lib/sanitize.ts` and run on the server. Input is sanitised first, then
+  validated, so a message made entirely of markup fails as empty rather than
+  passing on its raw length. Errors are returned as dictionary keys, so the
+  validator knows nothing about languages.
+- **Anti-spam**: a hidden honeypot field plus an in-process sliding-window
+  limiter (5 submissions per minute per client). Counters are in memory, so a
+  multi-instance deployment limits per instance — swap the map in
+  `lib/rate-limit.ts` for a shared store before scaling out.
+- **Server errors** are logged in full and returned to the browser as a generic
+  message key.
+- **`app/organizations/(list)` and `app/stories/(list)`** are route groups, so
+  they add nothing to the URL. They exist to scope `loading.tsx`: a skeleton
+  placed directly in the parent segment would also wrap `[slug]`, and streaming
+  it commits a 200 status before the detail page can call `notFound()` — turning
+  a genuine 404 into a soft one.
 
-Both validate on submit and fake the network call with a `setTimeout`.
-Replace that line with a `fetch` to a route handler or your CRM/ESP endpoint:
+## Deployment
 
-```ts
-setStatus("submitting");
-await fetch("/api/leads", { method: "POST", body: JSON.stringify(form) });
-setStatus("success");
+The app needs a writable SQLite file at `DATABASE_URL` and a persistent
+filesystem, which rules out purely ephemeral serverless targets unless you point
+`DATABASE_URL` at a hosted database and change the Prisma `provider` to match.
+
+```bash
+npm ci
+npx prisma migrate deploy   # apply migrations to the target database
+npm run db:seed             # first deploy only, or when seed content changes
+npm run build
+npm start
 ```
 
-## Calculator model
-
-Burn is estimated from metabolic equivalents:
-`kcal/min = MET × 3.5 × bodyweightKg / 200`, scaled by a small age factor, then
-multiplied by session length and weekly frequency. Time to target divides the
-remaining kilograms by the weekly deficit at 7,700 kcal per kilogram. These are
-marketing estimates, not medical advice — the disclaimer under the results says so.
-
-## Adding real photography
-
-Coach portraits and gallery tiles render branded placeholders (initials or a
-gradient panel) until real images exist, so the layout is final before shoot
-day. To swap in photographs, drop files in `public/` and set the optional
-`photo` (trainers) or `src` (gallery) field on the record in `lib/data.ts` —
-no component changes needed.
-
-Both render through a plain `<img>` rather than `next/image`, so remote URLs
-work without per-host `remotePatterns` config. If you move to local files only,
-switching to `next/image` would buy you automatic resizing.
-
-## Deploying to Vercel
-
-Import the repo on Vercel and accept the defaults (`next build`, no environment
-variables required). The page is fully static — it prerenders at build time and
-ships ~100 kB of first-load JS.
-
-## A note on the Next.js version
-
-The project pins `next@14.2.35`, the newest release on the 14.x line. `npm audit`
-still reports advisories against all of 14.x; they are only fixed in Next 16,
-which is a breaking upgrade. Most of the reported issues affect self-hosted
-server features this static page does not use, but plan the move to 16 if you
-add server actions, rewrites or the image optimizer.
+Set `NEXT_PUBLIC_SITE_URL` to the public origin before building — canonical URLs,
+`sitemap.xml` and Open Graph tags are generated from it.

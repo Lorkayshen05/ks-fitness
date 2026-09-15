@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import { Footer } from "@/components/footer";
-import { Navbar } from "@/components/navbar";
-import { dictionary, defaultLocale } from "@/lib/dictionary";
-import { LocaleProvider } from "@/lib/locale-context";
+import { Header } from "@/components/header";
+import { getDictionary, getLocale } from "@/lib/i18n";
+import { absoluteUrl, siteUrl } from "@/lib/seo";
+import { htmlLang } from "@/types";
 
 import "./globals.css";
 
@@ -14,36 +15,49 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-// Metadata is emitted at build time, so it uses the default locale. The visible
-// page swaps language on the client; crawlers get the English copy.
+/**
+ * Metadata is emitted in the default locale: language is a cookie preference
+ * rather than a URL segment, so every language shares one canonical URL and
+ * crawlers get the English copy. Per-page titles and descriptions come from
+ * `buildMetadata`.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
-    default: dictionary[defaultLocale].meta.title,
-    template: "%s",
+    default: getDictionary("en").meta.title,
+    template: `%s — ${getDictionary("en").meta.siteName}`,
   },
-  description: dictionary[defaultLocale].meta.description,
-  openGraph: {
-    title: dictionary[defaultLocale].meta.title,
-    description: dictionary[defaultLocale].meta.description,
-    type: "website",
-  },
+  description: getDictionary("en").meta.description,
+  applicationName: getDictionary("en").meta.siteName,
+  alternates: { canonical: absoluteUrl("/") },
+  robots: { index: true, follow: true },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  themeColor: "#1b5754",
+  width: "device-width",
+  initialScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+
   return (
-    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
-      <body className="bg-slate-950 font-sans text-slate-100">
-        <LocaleProvider>
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-        </LocaleProvider>
+    <html lang={htmlLang[locale]} className={inter.variable}>
+      <body className="flex min-h-screen flex-col bg-white font-sans text-ink-800">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-brand-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          {dict.common.skipToContent}
+        </a>
+        <Header />
+        <main id="main" className="flex-1">
+          {children}
+        </main>
+        <Footer />
       </body>
     </html>
   );

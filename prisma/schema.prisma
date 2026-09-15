@@ -1,0 +1,70 @@
+// Prisma schema for the Rohingya support platform.
+//
+// SQLite keeps the MVP dependency-free to run: the whole database is one file,
+// created by `npm run db:migrate` and populated by `npm run db:seed`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A humanitarian organisation the platform links to. `donationUrl` is the only
+/// route money ever takes: this platform never touches a payment.
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String
+  website     String
+  donationUrl String
+  /// True only when the organisation's registration and donation channel were
+  /// checked against a primary source. See `lib/verification.ts`.
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([verified])
+}
+
+/// A published explainer. The platform does not publish personal accounts of
+/// named individuals, so these are contextual pieces with cited sources.
+model Story {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  /// A path under `public/` (e.g. "/stories/rakhine-map.svg"). Remote URLs are
+  /// ignored at render time rather than sent through the image optimiser.
+  imageUrl  String?
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([published])
+}
+
+/// A single published figure. `source` is mandatory: a number without a source
+/// does not get rendered.
+model ImpactMetric {
+  id        String   @id @default(cuid())
+  label     String
+  value     String
+  source    String
+  updatedAt DateTime @updatedAt
+}
+
+/// A contact or volunteer enquiry. Stored server-side only; never rendered back
+/// to the public site.
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  /// "general" | "volunteer" — see `SubmissionType` in `types/index.ts`.
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

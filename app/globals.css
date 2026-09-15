@@ -3,20 +3,37 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  @apply bg-white text-ink-800 antialiased;
 }
 
-/* Keep sticky-nav anchor targets clear of the header. */
-section[id] {
+/* Anchored sections clear the sticky header. */
+[id] {
   scroll-margin-top: 5rem;
+}
+
+/* The native dialog element has no transition of its own worth keeping. */
+dialog[open] {
+  animation: fade-up 0.2s ease-out both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
