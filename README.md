@@ -161,27 +161,37 @@ supports two backends behind one client:
 
 Same schema, same migrations, same queries — nothing else in the app changes.
 
-### Vercel (recommended)
+### Vercel
 
-No `vercel.json` is needed: Next.js is zero-config on Vercel, and `postinstall`
-already runs `prisma generate` during the install step.
+The Vercel GitHub integration is already installed on this repository, so every
+push builds a preview and `main` builds production. No `vercel.json` is needed:
+Next.js is zero-config there, `postinstall` runs `prisma generate` during
+install, and `NEXT_PUBLIC_SITE_URL` is inferred from Vercel's own
+`VERCEL_PROJECT_PRODUCTION_URL` when it is not set explicitly.
+
+The one thing Vercel cannot supply is a writable database. Until the two
+variables below exist in the Vercel project, the build succeeds but any page
+that reads the database fails at request time — Vercel has no disk for a SQLite
+file to live on.
 
 ```bash
-# 1. Create the database (once), then apply this repo's migrations to it.
+# 1. Create the database (once) and apply this repo's migrations to it.
 turso db create sokongan-rohingya
 npm run db:sql | turso db shell sokongan-rohingya
 
 # 2. Seed it — the same seed script, pointed at Turso.
-TURSO_DATABASE_URL="libsql://<db>-<org>.turso.io" \
-TURSO_AUTH_TOKEN="<token>" \
-  npm run db:seed
+turso db show sokongan-rohingya --url          # → libsql://…
+turso db tokens create sokongan-rohingya       # → the auth token
+TURSO_DATABASE_URL="libsql://…" TURSO_AUTH_TOKEN="…" npm run db:seed
 
-# 3. Import the repo in Vercel and set the project environment variables:
-#      NEXT_PUBLIC_SITE_URL = https://<your-domain>
-#      TURSO_DATABASE_URL   = libsql://<db>-<org>.turso.io
-#      TURSO_AUTH_TOKEN     = <token>
-#    Then deploy. Vercel terminates TLS and issues the certificate itself.
+# 3. Add both to the Vercel project (Settings → Environment Variables), for
+#    Production and Preview, then redeploy. Vercel terminates TLS and issues
+#    the certificate itself; HSTS is set by next.config.mjs.
 ```
+
+Setting `NEXT_PUBLIC_SITE_URL` to a custom domain is optional but recommended
+once one is attached, so canonical URLs name the domain rather than the
+`.vercel.app` host.
 
 ### A host with a persistent disk
 
