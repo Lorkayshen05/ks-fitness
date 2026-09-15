@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { validateSubmission } from "@/lib/validation";
 import type { FormState } from "@/types";
@@ -43,7 +43,7 @@ export async function submitEnquiry(
   }
 
   try {
-    await prisma.contactSubmission.create({ data: result.data });
+    await getPrisma().contactSubmission.create({ data: result.data });
   } catch (error) {
     // The detail stays in the server log; the reader gets a generic message.
     console.error("submitEnquiry: failed to store submission", error);

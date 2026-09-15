@@ -1,4 +1,6 @@
-import { prisma } from "@/lib/db";
+import type { PrismaClient } from "@prisma/client";
+
+import { getPrisma } from "@/lib/db";
 import { sanitizeQuery } from "@/lib/sanitize";
 import type { ImpactMetricView, OrganizationView, StoryView } from "@/types";
 
@@ -15,7 +17,7 @@ export async function listOrganizations(
 ): Promise<OrganizationView[]> {
   const q = sanitizeQuery(filter.q);
 
-  const rows = await prisma.organization.findMany({
+  const rows = await getPrisma().organization.findMany({
     where: {
       ...(filter.verifiedOnly ? { verified: true } : {}),
       ...(q
@@ -35,17 +37,17 @@ export async function listOrganizations(
 }
 
 export async function getOrganization(slug: string): Promise<OrganizationView | null> {
-  const row = await prisma.organization.findUnique({ where: { slug } });
+  const row = await getPrisma().organization.findUnique({ where: { slug } });
   return row ? toOrganizationView(row) : null;
 }
 
 export async function listOrganizationSlugs(): Promise<string[]> {
-  const rows = await prisma.organization.findMany({ select: { slug: true } });
+  const rows = await getPrisma().organization.findMany({ select: { slug: true } });
   return rows.map((row) => row.slug);
 }
 
 export async function listStories(limit?: number): Promise<StoryView[]> {
-  const rows = await prisma.story.findMany({
+  const rows = await getPrisma().story.findMany({
     where: { published: true },
     orderBy: { createdAt: "desc" },
     ...(limit ? { take: limit } : {}),
@@ -54,12 +56,12 @@ export async function listStories(limit?: number): Promise<StoryView[]> {
 }
 
 export async function getStory(slug: string): Promise<StoryView | null> {
-  const row = await prisma.story.findUnique({ where: { slug } });
+  const row = await getPrisma().story.findUnique({ where: { slug } });
   return row && row.published ? toStoryView(row) : null;
 }
 
 export async function listStorySlugs(): Promise<string[]> {
-  const rows = await prisma.story.findMany({
+  const rows = await getPrisma().story.findMany({
     where: { published: true },
     select: { slug: true },
   });
@@ -70,7 +72,7 @@ export async function listImpactMetrics(): Promise<ImpactMetricView[]> {
   // Seed order, which puts the headline population figures first — the seed
   // upserts every row in sequence, so `updatedAt` preserves that order and the
   // home page's three-metric slice is the meaningful one.
-  const rows = await prisma.impactMetric.findMany({ orderBy: { updatedAt: "asc" } });
+  const rows = await getPrisma().impactMetric.findMany({ orderBy: { updatedAt: "asc" } });
   return rows.map((row) => ({
     id: row.id,
     label: row.label,
@@ -80,8 +82,8 @@ export async function listImpactMetrics(): Promise<ImpactMetricView[]> {
   }));
 }
 
-type OrganizationRow = Awaited<ReturnType<typeof prisma.organization.findFirstOrThrow>>;
-type StoryRow = Awaited<ReturnType<typeof prisma.story.findFirstOrThrow>>;
+type OrganizationRow = Awaited<ReturnType<PrismaClient["organization"]["findFirstOrThrow"]>>;
+type StoryRow = Awaited<ReturnType<PrismaClient["story"]["findFirstOrThrow"]>>;
 
 function toOrganizationView(row: OrganizationRow): OrganizationView {
   return {

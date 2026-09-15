@@ -15,11 +15,20 @@ function resolveSiteUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (configured) return configured.replace(/\/$/, "");
 
+  // Vercel supplies these itself, so a deployment there needs no manual
+  // configuration. The production domain is preferred over the per-deployment
+  // URL so a preview build still emits canonical URLs that point somewhere
+  // stable.
+  const vercelHost =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  if (vercelHost) return `https://${vercelHost.replace(/\/$/, "")}`;
+
   if (process.env.NODE_ENV === "production") {
     throw new Error(
       "NEXT_PUBLIC_SITE_URL is required in production: canonical URLs, the " +
         "sitemap and Open Graph tags are generated from it. Set it to the " +
-        "public origin (no trailing slash) before building.",
+        "public origin (no trailing slash) before building. (On Vercel it is " +
+        "inferred from VERCEL_PROJECT_PRODUCTION_URL.)",
     );
   }
 
