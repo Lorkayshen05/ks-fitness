@@ -9,9 +9,11 @@
  * Re-running is safe — every record is upserted on its natural key.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { createPrismaClient } from "../lib/db";
 
-const prisma = new PrismaClient();
+// The same client factory the app uses, so seeding a hosted Turso database is
+// the identical command with different environment variables.
+const prisma = createPrismaClient();
 
 /** Websites and donation URLs as published by each organisation. */
 const organizations = [

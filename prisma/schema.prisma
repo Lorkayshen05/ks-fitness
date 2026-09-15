@@ -4,7 +4,11 @@
 // created by `npm run db:migrate` and populated by `npm run db:seed`.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Lets the client run on the libSQL driver in production (see lib/db.ts),
+  // so the same schema and the same migrations serve both a local SQLite file
+  // and a hosted Turso database.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

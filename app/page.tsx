@@ -1,4 +1,5 @@
 import { ArrowRight, ShieldCheck } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/button";
@@ -11,9 +12,16 @@ import { OrganizationCard } from "@/components/organization-card";
 import { Section } from "@/components/section";
 import { StoryCard } from "@/components/story-card";
 import { helpWayIds, homeFaqIds, missionPointIds } from "@/data/content";
-import { getTranslation } from "@/lib/i18n";
+import { getDictionary, getTranslation } from "@/lib/i18n";
 import { listImpactMetrics, listOrganizations, listStories } from "@/lib/queries";
-import { absoluteUrl } from "@/lib/seo";
+import { absoluteUrl, buildMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildMetadata({
+  path: "/",
+  title: getDictionary("en").meta.title,
+  description: getDictionary("en").meta.description,
+  absoluteTitle: true,
+});
 
 /** The homepage reflects live database content, so it renders per request. */
 export const dynamic = "force-dynamic";

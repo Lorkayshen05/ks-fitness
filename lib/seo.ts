@@ -4,12 +4,29 @@ import { getDictionary } from "@/lib/i18n";
 import { defaultLocale, htmlLang, locales } from "@/types";
 
 /**
- * Absolute origin of the deployment. Metadata and the sitemap must be absolute,
- * so this falls back to localhost rather than emitting relative URLs.
+ * Absolute origin of the deployment.
+ *
+ * Canonical URLs, hreflang, the sitemap and Open Graph tags are all built from
+ * this, so a production build that silently fell back to localhost would ship
+ * an SEO bug that is invisible until a crawler finds it. Production therefore
+ * refuses to build without it; development keeps the convenient default.
  */
-export const siteUrl = (
-  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-).replace(/\/$/, "");
+function resolveSiteUrl() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "NEXT_PUBLIC_SITE_URL is required in production: canonical URLs, the " +
+        "sitemap and Open Graph tags are generated from it. Set it to the " +
+        "public origin (no trailing slash) before building.",
+    );
+  }
+
+  return "http://localhost:3000";
+}
+
+export const siteUrl = resolveSiteUrl();
 
 export function absoluteUrl(path: string) {
   return `${siteUrl}${path.startsWith("/") ? path : `/${path}`}`;
@@ -28,13 +45,22 @@ export function buildMetadata(options: {
   description: string;
   type?: "website" | "article";
   publishedTime?: string;
+  /** Skips the layout's "%s — Sokongan Rohingya" template. */
+  absoluteTitle?: boolean;
 }): Metadata {
-  const { path, title, description, type = "website", publishedTime } = options;
+  const {
+    path,
+    title,
+    description,
+    type = "website",
+    publishedTime,
+    absoluteTitle = false,
+  } = options;
   const url = absoluteUrl(path);
   const dict = getDictionary(defaultLocale);
 
   return {
-    title,
+    title: absoluteTitle ? { absolute: title } : title,
     description,
     alternates: {
       canonical: url,

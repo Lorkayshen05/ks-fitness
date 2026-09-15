@@ -26,10 +26,16 @@ Other scripts: `npm run build`, `npm run start`, `npm run lint`,
 
 ## Environment variables
 
-| Variable               | Required | Purpose                                                          |
-| ---------------------- | -------- | ---------------------------------------------------------------- |
-| `DATABASE_URL`         | yes      | SQLite connection string. Relative paths resolve against `prisma/`. |
-| `NEXT_PUBLIC_SITE_URL` | yes in production | Absolute origin, no trailing slash. Used for canonical URLs, `sitemap.xml`, `robots.txt` and Open Graph tags. Defaults to `http://localhost:3000`. |
+| Variable | Where | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | local, any host with a disk | SQLite connection string. Relative paths resolve against `prisma/`. |
+| `NEXT_PUBLIC_SITE_URL` | **required in production** | Absolute public origin, no trailing slash. Canonical URLs, hreflang, `sitemap.xml`, `robots.txt` and Open Graph tags are generated from it. A production build **fails** without it rather than silently shipping `localhost` canonicals. |
+| `TURSO_DATABASE_URL` | serverless production only | `libsql://…` URL of a hosted Turso database. When set, the same Prisma client runs on the libSQL driver instead of the local file. |
+| `TURSO_AUTH_TOKEN` | serverless production only | Token for that database. |
+
+No secret is ever committed: `.env` is git-ignored and `.env.example` carries
+placeholders only. `NEXT_PUBLIC_SITE_URL` is the only variable exposed to the
+browser, and it is a public origin by definition.
 
 ## Routes
 
@@ -134,20 +140,65 @@ These are enforced by the code and the seed data, not just by intention:
   placed directly in the parent segment would also wrap `[slug]`, and streaming
   it commits a 200 status before the detail page can call `notFound()` — turning
   a genuine 404 into a soft one.
+- **Response headers** set in `next.config.mjs`: `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS, with
+  `x-powered-by` removed. The site loads no third-party scripts and embeds no
+  remote images, so none of these costs anything.
 
 ## Deployment
 
-The app needs a writable SQLite file at `DATABASE_URL` and a persistent
-filesystem, which rules out purely ephemeral serverless targets unless you point
-`DATABASE_URL` at a hosted database and change the Prisma `provider` to match.
+### Why the database needs a decision first
+
+The schema is SQLite, which is ideal locally and on any host with a persistent
+disk — but Vercel's filesystem is ephemeral and read-only, so a `file:` database
+would be wiped on every deploy and every cold start. `lib/db.ts` therefore
+supports two backends behind one client:
+
+| Host | Set | Backend |
+| --- | --- | --- |
+| Local, Fly.io, Render, Railway, a VPS, Docker | `DATABASE_URL` | Prisma's own SQLite engine against a file on disk. |
+| Vercel, or any serverless platform | `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` | The libSQL driver adapter against a hosted Turso database. |
+
+Same schema, same migrations, same queries — nothing else in the app changes.
+
+### Vercel (recommended)
+
+No `vercel.json` is needed: Next.js is zero-config on Vercel, and `postinstall`
+already runs `prisma generate` during the install step.
+
+```bash
+# 1. Create the database (once), then apply this repo's migrations to it.
+turso db create sokongan-rohingya
+npm run db:sql | turso db shell sokongan-rohingya
+
+# 2. Seed it — the same seed script, pointed at Turso.
+TURSO_DATABASE_URL="libsql://<db>-<org>.turso.io" \
+TURSO_AUTH_TOKEN="<token>" \
+  npm run db:seed
+
+# 3. Import the repo in Vercel and set the project environment variables:
+#      NEXT_PUBLIC_SITE_URL = https://<your-domain>
+#      TURSO_DATABASE_URL   = libsql://<db>-<org>.turso.io
+#      TURSO_AUTH_TOKEN     = <token>
+#    Then deploy. Vercel terminates TLS and issues the certificate itself.
+```
+
+### A host with a persistent disk
 
 ```bash
 npm ci
-npx prisma migrate deploy   # apply migrations to the target database
-npm run db:seed             # first deploy only, or when seed content changes
-npm run build
+npx prisma migrate deploy     # applies migrations to DATABASE_URL
+npm run db:seed               # first deploy only, or when seed content changes
+NEXT_PUBLIC_SITE_URL=https://<your-domain> npm run build
 npm start
 ```
 
-Set `NEXT_PUBLIC_SITE_URL` to the public origin before building — canonical URLs,
-`sitemap.xml` and Open Graph tags are generated from it.
+### Verifying a build locally before shipping
+
+```bash
+NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000 npm run build
+npm start
+```
+
+`npm run lint`, `npm run typecheck`, `npm test` and `npm run build` all run in CI
+against a freshly migrated and seeded database.
